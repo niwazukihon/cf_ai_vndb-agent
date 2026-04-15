@@ -36,7 +36,7 @@ Rules:
 - Keep answers concise. Bullet points for lists. No more than ~6 recommendations at a time.
 - If the dataset doesn't contain a VN, say so honestly — the dataset covers the top ~10k VNs by vote count.`;
 
-const MAX_TURNS = 6;
+const MAX_TURNS = 9;
 const MAX_HISTORY = 20; // assistant+user pairs to keep around
 
 export class ChatSession {
@@ -92,79 +92,125 @@ export class ChatSession {
     // Persist the user turn immediately.
     this.messages.push({ role: "user", content: userMessage });
 
-    let finalText = "";
-    let assistantMsg: Message | null = null;
+    const self = this;
+    const encoder = new TextEncoder();
 
-    for (let turn = 0; turn < MAX_TURNS; turn++) {
-      const response = await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
-        messages: working as any,
-        tools: TOOL_SPECS as any,
-      }) as AiResponse;
-
-      // Log raw response shape for debugging (visible in `wrangler tail`).
-      console.log("[agent] raw response:", JSON.stringify(response).slice(0, 500));
-
-      const toolCalls = extractToolCalls(response);
-      const text = extractText(response);
-
-      console.log(`[agent] turn=${turn} toolCalls=${toolCalls.length} text=${!!text}`);
-
-      // Workers AI flat tool-call format in the assistant message.
-      assistantMsg = {
-        role: "assistant",
-        content: text ?? "",
-        ...(toolCalls.length > 0 ? {
-          tool_calls: toolCalls.map((c) => ({
-            name: c.function.name,
-            arguments: typeof c.function.arguments === "string"
-              ? JSON.parse(c.function.arguments || "{}")
-              : (c.function.arguments ?? {}),
-          })),
-        } : {}),
-      };
-      working.push(assistantMsg);
-
-      if (toolCalls.length === 0) {
-        finalText = text ?? "(no response)";
-        break;
-      }
-
-      // Execute each tool call and append a tool message per call.
-      for (const call of toolCalls) {
-        let result: unknown;
-        try {
-          const args = typeof call.function.arguments === "string"
-            ? JSON.parse(call.function.arguments || "{}")
-            : (call.function.arguments ?? {});
-          console.log(`[tool] ${call.function.name}`, JSON.stringify(args).slice(0, 200));
-          result = await runTool(this.env, call.function.name, args);
-        } catch (e) {
-          result = { error: String(e) };
-        }
-        // Workers AI expects tool results without tool_call_id.
-        working.push({
-          role: "tool",
-          name: call.function.name,
-          content: JSON.stringify(result).slice(0, 6000),
-        });
-      }
-    }
-
-    if (!finalText) finalText = "Sorry — I couldn't reach a final answer in time. Try rephrasing?";
-
-    // Persist the final assistant turn.
-    this.messages.push({ role: "assistant", content: finalText });
-    await this.save();
-
-    // Stream back as SSE so the UI can show progressive output (we just
-    // emit one chunk because Workers AI tool-call mode is non-streaming).
     const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ text: finalText })}\n\n`));
-        controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`));
-        controller.close();
+      async start(controller) {
+        const send = (obj: unknown) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        };
+
+        let finalText = "";
+        let lastAssistantText = "";
+        // Track called signatures so we can short-circuit duplicate calls
+        // instead of letting Llama spin in a loop.
+        const calledSignatures = new Set<string>();
+
+        try {
+          for (let turn = 0; turn < MAX_TURNS; turn++) {
+            const response = await self.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+              messages: working as any,
+              tools: TOOL_SPECS as any,
+            }) as AiResponse;
+
+            console.log("[agent] raw response:", JSON.stringify(response).slice(0, 500));
+
+            const toolCalls = extractToolCalls(response);
+            const text = extractText(response);
+            if (text && text.trim()) lastAssistantText = text;
+
+            console.log(`[agent] turn=${turn} toolCalls=${toolCalls.length} text=${!!text}`);
+
+            const assistantMsg: Message = {
+              role: "assistant",
+              content: text ?? "",
+              ...(toolCalls.length > 0 ? {
+                tool_calls: toolCalls.map((c) => ({
+                  name: c.function.name,
+                  arguments: typeof c.function.arguments === "string"
+                    ? JSON.parse(c.function.arguments || "{}")
+                    : (c.function.arguments ?? {}),
+                })),
+              } : {}),
+            };
+            working.push(assistantMsg);
+
+            if (toolCalls.length === 0) {
+              finalText = text ?? "(no response)";
+              break;
+            }
+
+            for (const call of toolCalls) {
+              let args: Record<string, unknown> = {};
+              let result: unknown;
+              try {
+                args = typeof call.function.arguments === "string"
+                  ? JSON.parse(call.function.arguments || "{}")
+                  : (call.function.arguments ?? {});
+              } catch {
+                args = {};
+              }
+              const sig = `${call.function.name}:${JSON.stringify(args)}`;
+              console.log(`[tool] ${call.function.name}`, JSON.stringify(args).slice(0, 200));
+              send({ type: "tool", name: call.function.name, args });
+              if (calledSignatures.has(sig)) {
+                console.log(`[tool] duplicate call short-circuited: ${sig.slice(0, 200)}`);
+                result = {
+                  error: "DUPLICATE_CALL: you already called this tool with these exact arguments earlier in this turn. The previous result is unchanged. Stop calling this tool — either call a DIFFERENT tool, or write the final answer for the user using the results you already have.",
+                };
+              } else {
+                calledSignatures.add(sig);
+                try {
+                  result = await runTool(self.env, call.function.name, args);
+                } catch (e) {
+                  result = { error: String(e) };
+                }
+              }
+              working.push({
+                role: "tool",
+                name: call.function.name,
+                content: JSON.stringify(result).slice(0, 6000),
+              });
+            }
+          }
+
+          // Loop ended without a clean text turn. Force a no-tools call so the
+          // model has to summarise from the tool results it already gathered.
+          if (!finalText) {
+            try {
+              console.log("[agent] forcing final answer (no tools)");
+              const forced = await self.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+                messages: [
+                  { role: "system", content: "TOOLS ARE DISABLED. You must produce a plain-text final answer for the user using ONLY the tool results that already appear in the conversation history. Do NOT output any tool call, JSON, or function-call syntax — output prose only. Cite VNs as v<id>. Be concise." },
+                  ...working,
+                  { role: "user", content: "Write the final answer now using only the tool results above." },
+                ] as any,
+              }) as AiResponse;
+              const forcedText = extractText(forced);
+              if (forcedText && forcedText.trim()) finalText = forcedText;
+            } catch (e) {
+              console.log("[agent] forced final-answer call failed:", String(e));
+            }
+          }
+
+          // Last-ditch fallback: any text the model emitted along the way.
+          if (!finalText && lastAssistantText) finalText = lastAssistantText;
+          if (!finalText) finalText = "Sorry — I couldn't reach a final answer in time. Try rephrasing?";
+
+          self.messages.push({ role: "assistant", content: finalText });
+          await self.save();
+
+          send({ type: "text", text: finalText });
+        } catch (e) {
+          send({ type: "error", message: String(e) });
+        } finally {
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+          controller.close();
+        }
       },
     });
+
     return new Response(stream, {
       headers: {
         "content-type": "text/event-stream",

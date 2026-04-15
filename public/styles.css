@@ -68,6 +68,23 @@ header button {
 }
 header button:hover { color: var(--text); }
 
+@keyframes reset-flash {
+  0%   { transform: scale(1);    background: transparent;       color: var(--muted); }
+  20%  { transform: scale(0.92); background: var(--accent);     color: #0b0e14; }
+  100% { transform: scale(1);    background: transparent;       color: var(--muted); }
+}
+header button.flashing {
+  animation: reset-flash 0.5s ease-out;
+}
+
+@keyframes messages-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+main.resetting {
+  animation: messages-fade 0.35s ease-out;
+}
+
 main {
   flex: 1;
   overflow-y: auto;
@@ -95,10 +112,34 @@ main {
   background: var(--surface);
   border: 1px solid var(--border);
 }
-.msg.assistant.thinking {
+.msg.assistant .answer.thinking {
   color: var(--muted);
   font-style: italic;
 }
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.tools:empty { display: none; }
+
+.tool {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool .tool-name { color: var(--accent); }
+.tool .tool-args { margin-left: 2px; }
 
 .msg a {
   color: var(--accent);

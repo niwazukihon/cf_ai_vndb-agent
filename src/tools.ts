@@ -24,13 +24,14 @@ export const TOOL_SPECS = [
   },
   {
     name: "filter_vns",
-    description: "Filter visual novels by year, tags, language, length, and minimum rating. Use this for queries like 'best mystery VNs released after 2018'. Tag names must come from list_tags first.",
+    description: "Filter visual novels by year, tags, language, length, and minimum rating. Use this for queries like 'best mystery VNs released after 2018'. Pass tag_names (an array of plain English tag names like ['Mystery']) and they will be resolved automatically — you do NOT need to call list_tags first.",
     parameters: {
       type: "object",
       properties: {
         year_min: { type: "integer" },
         year_max: { type: "integer" },
-        tag_ids: { type: "array", items: { type: "integer" }, description: "IDs from list_tags. All listed tags must apply (AND)." },
+        tag_names: { type: "array", items: { type: "string" }, description: "Plain English tag names like ['Mystery', 'Horror']. Resolved automatically. All listed tags must apply (AND)." },
+        tag_ids: { type: "array", items: { type: "integer" }, description: "Tag IDs (alternative to tag_names if you already know them)." },
         min_rating: { type: "number", description: "Minimum rating on a 0-10 scale, e.g. 8.0" },
         min_votes: { type: "integer" },
         language: { type: "string", description: "Two-letter language code, e.g. 'en'" },
@@ -107,6 +108,30 @@ async function filterVns(env: Env, args: ToolArgs) {
   const orderByRaw = String(args.order_by ?? "rating");
   const orderBy = (["rating", "votecount", "released"] as const).includes(orderByRaw as any) ? orderByRaw : "rating";
   const tagIds = Array.isArray(args.tag_ids) ? (args.tag_ids as unknown[]).map(Number).filter(Number.isFinite) : [];
+
+  // Resolve tag_names → ids server-side. Pick the most-used matching tag per name.
+  const tagNames = Array.isArray(args.tag_names)
+    ? (args.tag_names as unknown[]).map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  const unresolved: string[] = [];
+  for (const name of tagNames) {
+    const row = await env.DB.prepare(
+      `SELECT id FROM tags WHERE LOWER(name) = LOWER(?) ORDER BY length(name) ASC LIMIT 1`,
+    ).bind(name).first<{ id: number }>();
+    if (row) {
+      tagIds.push(row.id);
+    } else {
+      // Fall back to LIKE match.
+      const fuzzy = await env.DB.prepare(
+        `SELECT id FROM tags WHERE name LIKE ? ORDER BY length(name) ASC LIMIT 1`,
+      ).bind(`%${name}%`).first<{ id: number }>();
+      if (fuzzy) tagIds.push(fuzzy.id);
+      else unresolved.push(name);
+    }
+  }
+  if (unresolved.length && tagIds.length === 0) {
+    return { error: `Could not resolve tag names: ${unresolved.join(", ")}. Try calling list_tags to find similar tag names.` };
+  }
 
   const where: string[] = [];
   const binds: unknown[] = [];
