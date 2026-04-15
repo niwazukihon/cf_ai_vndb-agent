@@ -1,6 +1,6 @@
 # cf_ai_vndb-agent
 
-A chat agent hosted on Cloudflare that answers questions about visual novels using a curated subset of the [VNDB](https://vndb.org) database, vibe coded.
+A chat agent hosted on Cloudflare that answers questions about visual novels using a curated subset of the [vndb](https://vndb.org) database, vibe coded.
 A public instance is temporarily available [here](https://cf-ai-vndb-agent.arthniwa.workers.dev).
 
 The agent supports:
@@ -53,7 +53,7 @@ cf_ai_vndb-agent/
 ├── package.json
 ├── tsconfig.json
 ├── scripts/
-│   ├── build-db.ts            # parse VNDB dump → data.sqlite
+│   ├── build-db.ts            # parse vndb dump → data.sqlite
 │   ├── seed-d1.ts             # push schema + rows into remote D1 via REST API
 │   └── embed.ts               # generate Vectorize embeddings via Workers AI REST
 ├── src/
@@ -74,7 +74,7 @@ cf_ai_vndb-agent/
 - `pnpm` (or `npm` — adapt the commands below).
 - A Cloudflare account with Workers, D1, Vectorize, and Workers AI enabled (all available on the free plan).
 - Cloudflare's `wrangler` logged in: `npx wrangler login`.
-- The VNDB database dump extracted at `../vndb/vndb-db-YYYY-MM-DD/` (sibling of this folder). Grab the latest from <https://dl.vndb.org/dump/vndb-db-latest.tar.zst>.
+- The vndb database dump extracted at `../vndb/vndb-db-YYYY-MM-DD/` (sibling of this folder). Grab the latest from <https://dl.vndb.org/dump/vndb-db-latest.tar.zst>.
 
 ### Install dependencies
 
@@ -88,7 +88,7 @@ pnpm install
 pnpm build-db
 ```
 
-This parses the VNDB COPY dump, picks the top 10,000 VNs by vote count, and writes `data.sqlite` locally. Adjust the size with `TOP_N=5000 pnpm build-db`.
+This parses the vndb COPY dump, picks the top 10,000 VNs by vote count, and writes `data.sqlite` locally. Adjust the size with `TOP_N=5000 pnpm build-db`.
 
 Sanity-check the local SQLite:
 
@@ -120,6 +120,14 @@ pnpm seed-d1
 ```
 
 This loads `schema.sql` and then streams every row from `data.sqlite` into D1 in ≤100-parameter batches.
+
+Summary of the permission needed for the API token:
+|         |                 |      |
+| ------- | --------------- | ---- |
+| Account | Vectorize       | Edit |
+| Account | D1              | Edit |
+| Account | Workers Scripts | Edit |
+| User    | User Details    | Read |
 
 ### Generate and upload embeddings
 
@@ -158,4 +166,4 @@ Wrangler prints the public URL (something like `https://cf-ai-vndb-agent.<your-s
 
 ## License
 
-VNDB data is under ODbL + DbCL (see the data dump page [here](https://vndb.org/d14)). Code in this repo is MIT.
+The database of vndb is under ODbL + DbCL (see the data dump page [here](https://vndb.org/d14)).
