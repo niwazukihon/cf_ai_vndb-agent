@@ -1,6 +1,6 @@
 # cf_ai_vndb-agent
 
-A chat agent that answers questions about visual novels using a curated subset of the [VNDB](https://vndb.org) database, hosted on Cloudflare.
+A chat agent hosted on Cloudflare that answers questions about visual novels using a curated subset of the [VNDB](https://vndb.org) database, vibe coded.
 A public instance is temporarily available [here](https://cf-ai-vndb-agent.arthniwa.workers.dev).
 
 The agent supports:
@@ -70,10 +70,10 @@ cf_ai_vndb-agent/
 
 ### Prerequisites
 
-- Node 20+
-- `pnpm` (or `npm` — adapt the commands below)
-- A Cloudflare account with Workers, D1, Vectorize, and Workers AI enabled (all available on the free plan)
-- Cloudflare's `wrangler` logged in: `npx wrangler login`
+- Node 20+.
+- `pnpm` (or `npm` — adapt the commands below).
+- A Cloudflare account with Workers, D1, Vectorize, and Workers AI enabled (all available on the free plan).
+- Cloudflare's `wrangler` logged in: `npx wrangler login`.
 - The VNDB database dump extracted at `../vndb/vndb-db-YYYY-MM-DD/` (sibling of this folder). Grab the latest from <https://dl.vndb.org/dump/vndb-db-latest.tar.zst>.
 
 ### Install dependencies
@@ -82,7 +82,7 @@ cf_ai_vndb-agent/
 pnpm install
 ```
 
-### 2. Build the D1 subset (offline)
+### Build the D1 subset (offline)
 
 ```bash
 pnpm build-db
@@ -97,7 +97,7 @@ sqlite3 data.sqlite "SELECT COUNT(*) FROM vn"
 sqlite3 data.sqlite "SELECT id, title, rating FROM vn WHERE title LIKE '%Steins%Gate%'"
 ```
 
-### 3. Create the Cloudflare resources
+### Create the Cloudflare resources
 
 ```bash
 # D1
@@ -108,7 +108,7 @@ npx wrangler d1 create vndb
 npx wrangler vectorize create vndb-vns --dimensions=768 --metric=cosine
 ```
 
-### 4. Push the schema and data into D1
+### Push the schema and data into D1
 
 `wrangler d1 execute --file=...` runs out of memory on the large inserts, so seeding is done via the D1 REST API using parameterised queries:
 
@@ -121,7 +121,7 @@ pnpm seed-d1
 
 This loads `schema.sql` and then streams every row from `data.sqlite` into D1 in ≤100-parameter batches.
 
-### 5. Generate and upload embeddings
+### Generate and upload embeddings
 
 ```bash
 export CLOUDFLARE_API_TOKEN=...      # token needs "Workers AI: Read" + "Vectorize: Edit"
@@ -129,7 +129,7 @@ pnpm embed
 npx wrangler vectorize insert vndb-vns --file=./embeddings.ndjson
 ```
 
-### 6. Run locally
+### Run locally
 
 ```bash
 pnpm dev
@@ -141,7 +141,7 @@ Open <http://localhost:8787> and try:
 - `What are some good mystery visual novels released before 2020?`
 - `Find visual novels similar to Umineko.`
 
-### 7. Deploy
+### Deploy
 
 ```bash
 pnpm exec wrangler deploy
