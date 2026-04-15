@@ -42,7 +42,7 @@ The tool-calling loop in `ChatSession` also ships with several guardrails to cop
 
 Everything fits in Cloudflare's free tier for personal / demo traffic.
 
-## Repo layout
+## Repository layout
 
 ```
 cf_ai_vndb-agent/
@@ -66,17 +66,17 @@ cf_ai_vndb-agent/
     └── styles.css
 ```
 
-## Running it
+## How to run
 
-### 0. Prereqs
+### Prerequisites
 
 - Node 20+
 - `pnpm` (or `npm` — adapt the commands below)
 - A Cloudflare account with Workers, D1, Vectorize, and Workers AI enabled (all available on the free plan)
-- `wrangler` logged in: `npx wrangler login`
+- Cloudflare's `wrangler` logged in: `npx wrangler login`
 - The VNDB database dump extracted at `../vndb/vndb-db-YYYY-MM-DD/` (sibling of this folder). Grab the latest from <https://dl.vndb.org/dump/vndb-db-latest.tar.zst>.
 
-### 1. Install deps
+### Install dependencies
 
 ```bash
 pnpm install
@@ -93,8 +93,8 @@ This parses the VNDB COPY dump, picks the top 10,000 VNs by vote count, and writ
 Sanity-check the local SQLite:
 
 ```bash
-sqlite3 data.sqlite "SELECT COUNT(*) FROM vn;"
-sqlite3 data.sqlite "SELECT id, title, rating FROM vn WHERE id = 17;"  -- Steins;Gate
+sqlite3 data.sqlite "SELECT COUNT(*) FROM vn"
+sqlite3 data.sqlite "SELECT id, title, rating FROM vn WHERE title LIKE '%Steins%Gate%'"
 ```
 
 ### 3. Create the Cloudflare resources
@@ -144,7 +144,7 @@ Open <http://localhost:8787> and try:
 ### 7. Deploy
 
 ```bash
-pnpm deploy
+pnpm exec wrangler deploy
 ```
 
 Wrangler prints the public URL (something like `https://cf-ai-vndb-agent.<your-subdomain>.workers.dev`).
