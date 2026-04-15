@@ -1,6 +1,6 @@
 # cf_ai_vndb-agent
 
-A Cloudflare-hosted chat agent that answers questions about visual novels using a curated subset of the [VNDB](https://vndb.org) database. Built for the Cloudflare AI internship assignment.
+A chat agent that answers questions about visual novels using a curated subset of the [VNDB](https://vndb.org) database, hosted on Cloudflare.
 
 The agent supports:
 
@@ -23,13 +23,21 @@ Plus:
 
 The agent decides which of five tools to call:
 
-| Tool                  | Purpose                                                          |
-| --------------------- | ---------------------------------------------------------------- |
-| `search_vns_by_name`  | Title search against D1                                          |
-| `filter_vns`          | Year / tag / language / rating / length filter against D1        |
-| `get_vn_details`      | Full VN row + top tags + producers + related VNs                 |
-| `similar_vns`         | Vectorize similarity search by id or free-text                   |
-| `list_tags`           | Resolve a tag name like "mystery" to canonical tag ids           |
+| Tool                  | Purpose                                                                       |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `search_vns_by_name`  | Title search against D1                                                       |
+| `filter_vns`          | Year / tag / language / rating / length filter; accepts `tag_names` directly  |
+| `get_vn_details`      | Full VN row + top tags + producers + related VNs                              |
+| `similar_vns`         | Vectorize similarity search by id or free-text                                |
+| `list_tags`           | Resolve a tag name to canonical tag ids (rarely needed — `filter_vns` does it) |
+
+The tool-calling loop in `ChatSession` also ships with several guardrails to cope with Llama 3.3's tool-use variance:
+
+- **Duplicate-call hard-break** — if the model calls the same tool with the same arguments twice, the loop breaks instead of spinning.
+- **Auto-recovery for hallucinated ids** — when `get_vn_details` returns "not found", the agent automatically runs `search_vns_by_name` with a cleaned version of the user's message and feeds the results back.
+- **Turn-0 refusal recovery** — if the model outputs a refusal-like message on turn 0 without calling any tool, the agent injects a synthetic `search_vns_by_name` call and continues.
+- **Forced final-answer pass** — if the loop exhausts `MAX_TURNS` without a text turn, one extra call is made with tools disabled to force a prose summary from the tool results already gathered.
+- **Programmatic fallback** — if even that call produces no text, the most recent tool result is rendered as a markdown list so the user sees the actual data instead of an apology.
 
 Everything fits in Cloudflare's free tier for personal / demo traffic.
 
@@ -44,7 +52,8 @@ cf_ai_vndb-agent/
 ├── package.json
 ├── tsconfig.json
 ├── scripts/
-│   ├── build-db.ts            # parse VNDB dump → SQLite + data.sql
+│   ├── build-db.ts            # parse VNDB dump → data.sqlite
+│   ├── seed-d1.ts             # push schema + rows into remote D1 via REST API
 │   └── embed.ts               # generate Vectorize embeddings via Workers AI REST
 ├── src/
 │   ├── index.ts               # Worker entry, /api/chat + /api/reset
@@ -78,7 +87,7 @@ pnpm install
 pnpm build-db
 ```
 
-This parses the VNDB COPY dump, picks the top 10,000 VNs by vote count, and writes `data.sqlite` (for verification) plus `data.sql` (batched INSERTs for D1). Adjust the size with `TOP_N=5000 pnpm build-db`.
+This parses the VNDB COPY dump, picks the top 10,000 VNs by vote count, and writes `data.sqlite` locally. Adjust the size with `TOP_N=5000 pnpm build-db`.
 
 Sanity-check the local SQLite:
 
@@ -100,18 +109,21 @@ npx wrangler vectorize create vndb-vns --dimensions=768 --metric=cosine
 
 ### 4. Push the schema and data into D1
 
+`wrangler d1 execute --file=...` runs out of memory on the large inserts, so seeding is done via the D1 REST API using parameterised queries:
+
 ```bash
-npx wrangler d1 execute vndb --remote --file=./schema.sql
-npx wrangler d1 execute vndb --remote --file=./data.sql
+export CLOUDFLARE_ACCOUNT_ID=...     # Workers > Account ID
+export CLOUDFLARE_API_TOKEN=...      # token with "D1: Edit"
+export D1_DATABASE_ID=...            # the UUID from wrangler.toml
+pnpm seed-d1
 ```
 
-(For local dev against a local D1, swap `--remote` for `--local`.)
+This loads `schema.sql` and then streams every row from `data.sqlite` into D1 in ≤100-parameter batches.
 
 ### 5. Generate and upload embeddings
 
 ```bash
-export CLOUDFLARE_ACCOUNT_ID=...     # Workers > Account ID
-export CLOUDFLARE_API_TOKEN=...      # token with "Workers AI: Read"
+export CLOUDFLARE_API_TOKEN=...      # token needs "Workers AI: Read" + "Vectorize: Edit"
 pnpm embed
 npx wrangler vectorize insert vndb-vns --file=./embeddings.ndjson
 ```
@@ -124,9 +136,9 @@ pnpm dev
 
 Open <http://localhost:8787> and try:
 
-- `Tell me about Steins;Gate`
-- `Best mystery VNs released after 2018`
-- `VNs similar to Umineko`
+- `Tell me about Steins;Gate.`
+- `What's the best mystery visual novels released after 2020?`
+- `Find visual novels similar to Umineko.`
 
 ### 7. Deploy
 
@@ -139,8 +151,9 @@ Wrangler prints the public URL (something like `https://cf-ai-vndb-agent.<your-s
 ## Notes & limitations
 
 - The dataset is the top ~10k VNs by vote count. Anything more obscure won't be in D1 / Vectorize, and the agent is instructed to admit that.
-- Workers AI tool-calling response shape is still in flux; `src/session.ts` handles both the OpenAI-style `tool_calls` shape and the older flat shape.
-- The "streaming" UI just emits one SSE chunk because Workers AI's tool-calling mode is non-streaming. Token-by-token streaming would require a non-tool-calling final pass.
+- Workers AI tool-calling response shape is still in flux; `src/session.ts` handles both the OpenAI-style `tool_calls` shape and the older flat shape, and uses the flat format when sending tools to the model.
+- The UI streams SSE events progressively as the agent runs: a `{type:"tool"}` event per tool call (rendered as a chip in the chat bubble) and a final `{type:"text"}` event with the answer. Token-by-token streaming of the final answer would require a separate non-tool-calling pass.
+- Tool-calling quality on Llama 3.3 70B is uneven — it sometimes hallucinates VN ids or loops on the same tool. The guardrails listed above exist specifically to cope with that, rather than trusting the model to always self-correct.
 
 ## License
 

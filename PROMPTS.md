@@ -303,8 +303,6 @@ Find visual novels similar to Umineko?
 get_vn_details(id=533)
 To answer your question, I need to first find the id of the visual novel "Umineko" and then use that id to find similar visual novels. Let me try that.
 
-
-
 Now the above two questions are fixed, but the first question is broken again. Here's the chat:
 
 Tell me about Steins;Gate
@@ -312,3 +310,165 @@ Tell me about Steins;Gate
 get_vn_details(id=6118)
 search_vns_by_name(query=Tell me about Steins;Gate)
 I was unable to locate the correct id for Steins;Gate. As such I could not get the visual novel details.
+
+It's still broken. Here's chat log:
+
+Tell me about Steins;Gate.
+Your function definitions do not fully cover the aspects of this task. Please enhance them.
+
+
+Now I think all three tests work. However, the second (What's the best mystery visual novels released after 2019?) and third (Find some visual novels similar to Umineko.) question, the formatting is bad. They are written in one line, but I want the entries to be line by line, like they used to be. Here is the chat log:
+
+# Tell me about Steins;Gate.
+
+get_vn_details(id=611)
+search_vns_by_name(query=Steins;Gate)
+get_vn_details(id=2002)
+Steins;Gate is a visual novel that follows a group of tech-savvy students who discover a way to change the past using a modified microwave. They become entangled in a conspiracy surrounding SERN and John Titor, who claims to be from a dystopian future. The game features blind choices, a chuunibyou protagonist, time travel, and a suspenseful storyline with a one true end. It has received high ratings for its engaging story and characters.
+
+# What's the best mystery visual novels released after 2019?
+
+filter_vns(tag_names=["Mystery"], year_min=2019, order_by=rating, limit=10)
+filter_vns(year_min=2019, tag_names=["Mystery"], limit=10)
+Here are the top mystery visual novels released after 2019:1. もんむす・くえすと！ ぱらどっくすRPG終章 (2023) - rating 9.162. 大穢 (2024) - rating 8.963. TSUKIHIME -A piece of blue glass moon- (2021) - rating 8.834. Jack Jeanne (2021) - rating 8.745. Aokana - Four Rhythms Across the Blue - EXTRA2 (2022) - rating 8.726. サクラノ刻－櫻の森の下を歩む－ (2021) - rating 8.697. Eternum (2022) - rating 8.698. アマカノ２＋ (2023) - rating 8.679. BLACK SHEEP TOWN (2022) - rating 8.6610. HENPRI: HENTAI PRISON (2021) - rating 8.63
+
+# Find some visual novels similar to Umineko.
+
+similar_vns(id=null, text=Umineko, limit=10)
+similar_vns(id=2153)
+similar_vns(id=2153, limit=10)
+Here are some visual novels similar to Umineko: When They Cry:1. Umineko When They Cry - Question Arcs2. Umineko no Naku Koro ni Musu3. Higurashi When They Cry - Question Arcs4. Higurashi When They Cry - Answer Arcs5. Higurashi No Naku Koro Ni Mei6. ひぐらしの哭く頃に 雀7. スロウ・ダメージ8. クロウカシス ～七憑キノ贄～9. Mary Skelter: Nightmares10. くノ一三姉妹～壱ノ巻・淫法三姉妹 見参！～These visual novels share similarities with Umineko in terms of their themes, genres, and gameplay mechanics. They are all part of the mystery and thriller genres, with some elements of horror and suspense. If you enjoyed Umineko, you may find these recommendations to be of interest.
+
+The answers to the second and third questions are still not good. The second one has strange formatting. The third one's formatting is also not good, but more importantly, the answer is wrong. Those titles are not related to Umineko at all. Here is the chat log:
+
+```
+What's the best mystery visual novels released after 2019?
+
+filter_vns(year_min=2019, tag_names=["Mystery"])
+The best mystery visual novels released after 2019 are:1. もんむす・くえすと！ ぱらどっくすRPG終章 (2023)
+- rated 9.162. 大穢 (2024)
+- rated 8.963. TSUKIHIME -A piece of blue glass moon- (2021)
+- rated 8.834. Jack Jeanne (2021)
+- rated 8.745. Aokana
+- Four Rhythms Across the Blue
+- EXTRA2 (2022)
+- rated 8.72These visual novels have been rated highly by users and have a good number of votes, indicating their popularity and quality.
+
+Find some visual novels similar to Umineko.
+
+similar_vns(id=466, limit=10)
+similar_vns(id=10448, limit=10)
+Here are some visual novels similar to Umineko:
+```
+
+In fact, before I tried to fix the issue of the first question, the answers to the second and third quesiton were perfect. They even have a links to vndb.org. I want to revert the code for the second and third question to before I try to fix the first question, while still keep the first question fine.
+
+
+The answer to the 2nd question is good. Don't change that. The answer to the 3rd question is almost good. It's just the formatting is still not one visual novel per line. Otherwise it's good so don't change it drastically. The 1st quesiton has serious issues. Please see chat log:
+
+```
+Tell me about Steins;Gate.
+
+get_vn_details(id=6484)
+get_vn_details(id=6484)
+Sorry — I couldn't reach a final answer in time. Try rephrasing?
+
+What's the best mystery visual novels released after 2019?
+
+filter_vns(year_min=2019, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2019, tag_names=["Mystery"], order_by=rating, limit=10)
+Here's what I found:
+- v47866 — もんむす・くえすと！ ぱらどっくすRPG終章 (2023) — rating 9.16
+- v30925 — 大穢 (2024) — rating 8.96
+- v17909 — TSUKIHIME -A piece of blue glass moon- (2021) — rating 8.83
+- v26154 — Jack Jeanne (2021) — rating 8.74
+- v21438 — Aokana - Four Rhythms Across the Blue - EXTRA2 (2022) — rating 8.72
+- v20431 — サクラノ刻－櫻の森の下を歩む－ (2021) — rating 8.69
+- v31929 — Eternum (2022) — rating 8.69
+- v31813 — アマカノ２＋ (2023) — rating 8.67
+
+Find some visual novels similar to Umineko.
+
+similar_vns(id=229, limit=5)
+similar_vns(id=557, limit=5)
+similar_vns(id=343, limit=5)
+similar_vns(id=509, limit=5)
+similar_vns(id=108, limit=5)
+similar_vns(id=611, limit=5)
+similar_vns(id=1052, limit=5)
+Here are some visual novels similar to Umineko: - v23048 — ボクのあまやかせいかつ－星湘町観光課、毎日えっちなロコドル活動！－ - v51144 — レズ姉に男を教えてやりました ～彼女は姉に寝取られていました～ - v1702 — ここは楽園荘3 - v6433 — ボクカノ2 ～幼馴染に先輩に、迷えるオトコの三角関係 - v15076 — 隠恋ぼ ～二人だけのヒミツの時間～
+```
+
+Now the first is fixed, but the second and third are significantly worse. Can you revert those changes for them? Or truly fix them all at once. Chat log:
+```
+What's the best mystery visual novels released after 2019?
+
+filter_vns(year_min=2019, tag_names=["Mystery"], order_by=rating, limit=1)
+filter_vns(year_min=2019, tag_names=["Mystery"], order_by=rating, limit=1)
+Here's what I found:
+- v47866 — もんむす・くえすと！ ぱらどっくすRPG終章 (2023) — rating 9.16
+
+Find some visual novels similar to Umineko.
+
+similar_vns(id=1234)
+similar_vns(id=null, text=Umineko, limit=10)
+similar_vns(id=24, limit=10)
+Some visual novels similar to Umineko are:- うみねこのなく頃に咲- ひぐらしの哭く頃に 雀 - クロウカシス ～七憑キノ贄～
+```
+
+I reverted the code to a previous state. I want to ask the agent three questions.
+1. Tell me about Steins;Gate.
+2. What's the best mystery visual novels released after 2020?
+3. Find visual novels similar to Umineko.
+For the 2nd and 3rd question, I'm satisfied with the current response below:
+```
+What's the best mystery visual novels released after 2020?
+filter_vns(year_min=2020, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2020, tag_names=["Mystery"], order_by=rating, limit=10)
+Here's what I found:
+- v47866 — もんむす・くえすと！ ぱらどっくすRPG終章 (2023) — rating 9.16
+- v30925 — 大穢 (2024) — rating 8.96
+- v17909 — TSUKIHIME -A piece of blue glass moon- (2021) — rating 8.83
+- v26154 — Jack Jeanne (2021) — rating 8.74
+- v21438 — Aokana - Four Rhythms Across the Blue - EXTRA2 (2022) — rating 8.72
+- v20431 — サクラノ刻－櫻の森の下を歩む－ (2021) — rating 8.69
+- v31929 — Eternum (2022) — rating 8.69
+- v31813 — アマカノ２＋ (2023) — rating 8.67
+
+Find visual novels similar to Umineko.
+similar_vns(id=641, limit=10)
+search_vns_by_name(query=Umineko, limit=1)
+similar_vns(id=24, limit=10)
+similar_vns(id=24, limit=10)
+Here's what I found:
+- v2153 — Umineko When They Cry - Answer Arcs
+- v24610 — Umineko no Naku Koro ni Musu
+- v67 — Higurashi When They Cry - Question Arcs
+- v42278 — Higurashi No Naku Koro Ni Mei
+- v32082 — ひぐらしの哭く頃に 雀
+- v68 — Higurashi When They Cry - Answer Arcs
+- v19035 — スロウ・ダメージ
+- v201 — Tick! Tack!
+```
+Therefore, no need to change the code related to these results. However, I'm not satisfied with the answer to the 1st quesiton:
+```
+Tell me about Steins;Gate.
+get_vn_details(id=6111)
+search_vns_by_name(query=Steins;Gate)
+The visual novel "Steins;Gate" has the following details:Description: Steins;Gate is a visual novel developed by 5pb. and Nitroplus. It follows the story of Rintaro Okabe, a self-proclaimed "mad scientist" who discovers a way to send text messages to the past. As he and his friends experiment with this technology, they become embroiled in a conspiracy involving a mysterious organization and a catastrophic future.Top tags: science fiction, thriller, mysteryDevelopers/Publishers: 5pb., NitroplusRelated VNs: STEINS;GATE 0, STEINS;GATE: My Darling’s Embrace, STEINS;GATE: Linear Bounded Phenogram, Steins;Gate Variant Space Octet, ファミコレADV シュタインズ・ゲート, Steins;Gate: The Distant Valhalla, STEINS;GATE×Sanrio Characters: Chance Encounter of the Goldig Party
+```
+The agent outputs too much information and in later parts of the response, it seems to start outputing raw data. I want to fix this, but only this first quesiton. I want as little code change as possible.
+
+
+The previous fix affected the answer to the 2nd question so I reverted the code change. I think the answer to the 1st question it's very unnatural. I don't want the agent to just print out th tags, etc. In fact, I don't want it to say the tags at all. It shouldn't say "Steins;Gate" has following details. Description:". It should say: "Steins;Gate is ...". For example, one good response is like:
+```
+Steins;Gate is a visual novel developed by 5pb. and Nitroplus. It follows the story of Rintaro Okabe, a self-proclaimed "mad scientist" who discovers a way to send text messages to the past. As he and his friends experiment with this technology, they become embroiled in a conspiracy involving a mysterious organization and a catastrophic future.
+```
+
+I'm a bit comfused. The previous code change breaks the 3rd question again, but looking at the code change, it's not supposed to happen. I reverted the code and tested the 1st question. It turned out OK. So it seems that the current code is fine. Don't change the code. Can you inspect the code and try to explain the observation?
+
+I think the situation has improved a lot. I want to commit the changes. Can you update the
+@cf_ai_vndb-agent\README.md with the our conversation considered?
+
+Can you check the git repo for to see if I exposed any personal information? Especially check the file:
+  @cf_ai_vndb-agent\PROMPTS.md and @cf_ai_vndb-agent\README.md .
