@@ -1,12 +1,13 @@
 # cf_ai_vndb-agent
 
 A chat agent that answers questions about visual novels using a curated subset of the [VNDB](https://vndb.org) database, hosted on Cloudflare.
+A public instance is temporarily available [here](https://cf-ai-vndb-agent.arthniwa.workers.dev).
 
 The agent supports:
 
-- **Lookup** — "Tell me about Steins;Gate"
-- **Filtered search** — "Best mystery VNs released after 2018"
-- **Recommendations** — "VNs similar to Umineko"
+- **Lookup** — "Tell me about Steins;Gate."
+- **Filtered search** — "What are some good mystery visual novels released before 2020?"
+- **Recommendations** — "Find visual novels similar to Umineko."
 
 ## Components
 
@@ -137,7 +138,7 @@ pnpm dev
 Open <http://localhost:8787> and try:
 
 - `Tell me about Steins;Gate.`
-- `What's the best mystery visual novels released after 2020?`
+- `What are some good mystery visual novels released before 2020?`
 - `Find visual novels similar to Umineko.`
 
 ### 7. Deploy
@@ -157,4 +158,4 @@ Wrangler prints the public URL (something like `https://cf-ai-vndb-agent.<your-s
 
 ## License
 
-VNDB data is under ODbL + DbCL (see the original dump's README). Code in this repo is MIT.
+VNDB data is under ODbL + DbCL (see the data dump page [here](https://vndb.org/d14)). Code in this repo is MIT.
