@@ -285,3 +285,30 @@ similar_vns(text=Umineko, limit=10)
 similar_vns(text=Umineko, limit=10)
 similar_vns(text=Umineko, limit=10)
 Sorry — I couldn't reach a final answer in time. Try rephrasing?
+
+It still doesn't work. Here is the chat log:
+What's the best mystery visual novels released after 2018?
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+filter_vns(year_min=2018, tag_names=["Mystery"], order_by=rating, limit=10)
+Sorry — I couldn't reach a final answer in time. Try rephrasing?
+
+Find visual novels similar to Umineko?
+get_vn_details(id=533)
+To answer your question, I need to first find the id of the visual novel "Umineko" and then use that id to find similar visual novels. Let me try that.
+
+
+
+Now the above two questions are fixed, but the first question is broken again. Here's the chat:
+
+Tell me about Steins;Gate
+
+get_vn_details(id=6118)
+search_vns_by_name(query=Tell me about Steins;Gate)
+I was unable to locate the correct id for Steins;Gate. As such I could not get the visual novel details.

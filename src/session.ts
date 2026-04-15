@@ -141,6 +141,7 @@ export class ChatSession {
               break;
             }
 
+            let dupeDetected = false;
             for (const call of toolCalls) {
               let args: Record<string, unknown> = {};
               let result: unknown;
@@ -155,24 +156,45 @@ export class ChatSession {
               console.log(`[tool] ${call.function.name}`, JSON.stringify(args).slice(0, 200));
               send({ type: "tool", name: call.function.name, args });
               if (calledSignatures.has(sig)) {
-                console.log(`[tool] duplicate call short-circuited: ${sig.slice(0, 200)}`);
-                result = {
-                  error: "DUPLICATE_CALL: you already called this tool with these exact arguments earlier in this turn. The previous result is unchanged. Stop calling this tool — either call a DIFFERENT tool, or write the final answer for the user using the results you already have.",
-                };
-              } else {
-                calledSignatures.add(sig);
-                try {
-                  result = await runTool(self.env, call.function.name, args);
-                } catch (e) {
-                  result = { error: String(e) };
-                }
+                console.log(`[tool] duplicate call detected: ${sig.slice(0, 200)} — hard-breaking loop`);
+                dupeDetected = true;
+                break;
+              }
+              calledSignatures.add(sig);
+              try {
+                result = await runTool(self.env, call.function.name, args);
+              } catch (e) {
+                result = { error: String(e) };
               }
               working.push({
                 role: "tool",
                 name: call.function.name,
                 content: JSON.stringify(result).slice(0, 6000),
               });
+
+              // Auto-recovery: if get_vn_details returned not-found, the model
+              // hallucinated an id. Run search_vns_by_name on the user's
+              // original message and feed the result back in the same turn so
+              // the model can pick up without giving up.
+              const errStr = (result as any)?.error;
+              if (call.function.name === "get_vn_details" && typeof errStr === "string" && errStr.includes("not found")) {
+                const cleanedQuery = extractTitleFromUserMessage(userMessage);
+                console.log(`[agent] get_vn_details miss — auto-running search_vns_by_name(query=${cleanedQuery})`);
+                send({ type: "tool", name: "search_vns_by_name", args: { query: cleanedQuery } });
+                let recovery: unknown;
+                try {
+                  recovery = await runTool(self.env, "search_vns_by_name", { query: cleanedQuery });
+                } catch (e) {
+                  recovery = { error: String(e) };
+                }
+                working.push({
+                  role: "tool",
+                  name: "search_vns_by_name",
+                  content: JSON.stringify(recovery).slice(0, 6000),
+                });
+              }
             }
+            if (dupeDetected) break;
           }
 
           // Loop ended without a clean text turn. Force a no-tools call so the
@@ -196,6 +218,14 @@ export class ChatSession {
 
           // Last-ditch fallback: any text the model emitted along the way.
           if (!finalText && lastAssistantText) finalText = lastAssistantText;
+
+          // Programmatic fallback: if the model produced nothing at all but we
+          // do have tool results, render the most recent useful one as a list.
+          if (!finalText) {
+            const fallback = renderLastToolResult(working);
+            if (fallback) finalText = fallback;
+          }
+
           if (!finalText) finalText = "Sorry — I couldn't reach a final answer in time. Try rephrasing?";
 
           self.messages.push({ role: "assistant", content: finalText });
@@ -218,6 +248,56 @@ export class ChatSession {
       },
     });
   }
+}
+
+// ---------- query cleaning ----------
+//
+// When auto-recovering from a hallucinated VN id, we re-search using the
+// user's own message — but `search_vns_by_name` is a LIKE match against the
+// title, so "Tell me about Steins;Gate" finds nothing. Strip common natural-
+// language wrappers down to the bare title.
+
+function extractTitleFromUserMessage(msg: string): string {
+  let s = msg.trim();
+  // Strip leading natural-language prefixes.
+  s = s.replace(
+    /^(please\s+)?(can you\s+)?(tell me (about|more about)|what(\s+is|'s)|who(\s+is|'s)|info(rmation)? on|details? on|describe|show me|find|search( for)?|look up|recommend(?:ations? for)?|i want to know about)\s+/i,
+    "",
+  );
+  // Strip trailing punctuation and filler.
+  s = s.replace(/[?!.\s]+$/g, "");
+  s = s.replace(/^(the\s+visual novel\s+)/i, "");
+  return s.trim() || msg.trim();
+}
+
+// ---------- programmatic fallback ----------
+//
+// If the model fails to produce any text at all but we have tool results,
+// scan backwards for the most recent one that contains a list of VNs and
+// render it as a markdown bullet list. Better than apologising.
+
+function renderLastToolResult(working: Message[]): string | null {
+  for (let i = working.length - 1; i >= 0; i--) {
+    const m = working[i];
+    if (m.role !== "tool") continue;
+    let parsed: any;
+    try { parsed = JSON.parse(m.content); } catch { continue; }
+    if (parsed?.error) continue;
+    const list: any[] | null =
+      Array.isArray(parsed?.results) ? parsed.results :
+      Array.isArray(parsed?.matches) ? parsed.matches :
+      null;
+    if (!list || list.length === 0) continue;
+    const lines = list.slice(0, 8).map((row) => {
+      const id = row.id;
+      const title = row.title ?? "(untitled)";
+      const year = row.year ? ` (${row.year})` : "";
+      const rating = row.rating != null ? ` — rating ${Number(row.rating).toFixed(2)}` : "";
+      return `- v${id} — ${title}${year}${rating}`;
+    });
+    return `Here's what I found:\n${lines.join("\n")}`;
+  }
+  return null;
 }
 
 // ---------- response shape helpers ----------
