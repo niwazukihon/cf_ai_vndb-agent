@@ -1,0 +1,10 @@
+node_modules/
+.wrangler/
+dist/
+*.log
+.env
+.env.*
+data.sqlite
+data.sql
+data-sql/
+embeddings.ndjson

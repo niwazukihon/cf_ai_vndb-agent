@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>vndb agent</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>vndb agent</h1>
+    <button id="reset" type="button" aria-label="Reset chat">reset</button>
+  </header>
+
+  <main id="messages" aria-live="polite"></main>
+
+  <form id="composer" autocomplete="off">
+    <textarea id="input" rows="1" placeholder="Ask about a visual novel…" aria-label="Message"></textarea>
+    <button type="submit" id="send">send</button>
+  </form>
+
+  <script src="/chat.js" type="module"></script>
+</body>
+</html>

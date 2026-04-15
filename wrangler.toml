@@ -1,0 +1,33 @@
+name = "cf-ai-vndb-agent"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets (the chat UI) served from /public
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Workers AI — Llama 3.3 + bge embeddings
+[ai]
+binding = "AI"
+
+# D1 — structured VN data
+[[d1_databases]]
+binding = "DB"
+database_name = "vndb"
+database_id = "bb6d72a7-d661-42d1-9a58-839bb3de805e"
+
+# Vectorize — VN description embeddings (768 dims, cosine)
+[[vectorize]]
+binding = "VEC"
+index_name = "vndb-vns"
+
+# Durable Object — per-session chat memory + agent loop
+[[durable_objects.bindings]]
+name = "CHAT"
+class_name = "ChatSession"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatSession"]
