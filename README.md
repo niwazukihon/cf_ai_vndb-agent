@@ -112,7 +112,16 @@ npx wrangler vectorize create vndb-vns --dimensions=768 --metric=cosine
 
 `wrangler d1 execute --file=...` runs out of memory on the large inserts, so seeding is done via the D1 REST API using parameterised queries:
 
+```powershell
+# Powershell
+$env:CLOUDFLARE_ACCOUNT_ID="..."
+$env:CLOUDFLARE_API_TOKEN="..."
+$env:D1_DATABASE_ID="..."
+pnpm seed-d1
+```
+or
 ```bash
+# Bash
 export CLOUDFLARE_ACCOUNT_ID=...     # Workers > Account ID
 export CLOUDFLARE_API_TOKEN=...      # token with "D1: Edit"
 export D1_DATABASE_ID=...            # the UUID from wrangler.toml
@@ -132,7 +141,7 @@ Summary of the permission needed for the API token:
 ### Generate and upload embeddings
 
 ```bash
-export CLOUDFLARE_API_TOKEN=...      # token needs "Workers AI: Read" + "Vectorize: Edit"
+$env:CLOUDFLARE_API_TOKEN="..."      # token needs "Workers AI: Read" + "Vectorize: Edit"
 pnpm embed
 npx wrangler vectorize insert vndb-vns --file=./embeddings.ndjson
 ```
